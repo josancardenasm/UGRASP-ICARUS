@@ -4,30 +4,83 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <SD.h>
 
+/***********DEFINES**************/
+
+//LEDS
+#define LEDV 5
+#define LEDA 6
+#define LEDR 9
 
 /**********VARIABLES*************/
 
-char NMEA[100];
-char TRAMA[100];
+//GPS
+char NMEA[100];           //Buffer para la trama NMEA
+char TRAMA[100];          //Buffer para la trama NMEA Capturada
 int i=0;
 char c='0';
 int flag=0;
 int tiempo=0;
+float hora;         //Hora UTC
+float lat;          //Ldatitud
+char ilat;          //Indicador norte/sur
+float lon;          //Longitud
+char ilon;          //Indicador longitud este/oested
+int fix;            //Flag de posición fijada
+int sat;            //Número de satelites usados
+float HDOP;         //No se que es
+float alt;          //Altitud
+char unit;          //Unidad de altitud
 
+//SD
+File myFile;              //Manejador para la SD
+const int chipSelect_SD_default = 53;
+const int chipSelect_SD = chipSelect_SD_default;
+int fileExist=0;
+char mensaje[200];
 
 /***********PROTOTIPOS***********/
 
 void getNMEA1(void);
 void getNMEA2(void);
 void descifrarTrama(void);
+void writeFileSD(char *);
+
+/***********APLICACION************/
 
 void setup() {
 
+  delay(5000);
+
+  //GPS
   Serial.begin(38400);
   Serial3.begin(38400);
-  delay(5000);
+
+
   Serial.println("Aqui empiezo");
+
+  //LEDS
+  pinMode(LEDV, OUTPUT);
+  pinMode(LEDA, OUTPUT);
+  pinMode(LEDR, OUTPUT);
+  digitalWrite(LEDV,LOW);
+  digitalWrite(LEDA,LOW);
+  digitalWrite(LEDR,LOW);
+
+  //SD (Para ayuda mirar ejemplo Files)
+  pinMode(chipSelect_SD_default, OUTPUT);
+  digitalWrite(chipSelect_SD_default, HIGH);
+  pinMode(chipSelect_SD, OUTPUT);
+  digitalWrite(chipSelect_SD, HIGH);
+  if (!SD.begin(chipSelect_SD)) {
+    Serial.println("initialization failed!");
+    digitalWrite(LEDR,HIGH);
+  }
+  if (SD.exists("log.txt")) {
+    Serial.println("example.txt exists.");
+  }
+
 }
 
 void loop() {
@@ -41,6 +94,9 @@ void loop() {
   if (tiempo==10){
 
     Serial.println("Han pasado 10 segundos");
+    // memset(mensaje,0,200);
+    // sprintf(mensaje,"QUE PASA MONSTRO\n");
+    // writeFileSD(mensaje);
     tiempo=0;
   }
 }
@@ -74,10 +130,11 @@ void getNMEA1 (void){
 
     if (c=='\r'){
 
-      if (strncmp(NMEA,"$GPRMC",6)==0){
+      if (strncmp(NMEA,"$GPGGA",6)==0){
         memset(TRAMA,0,100);
         strcpy(TRAMA, NMEA);
         Serial.println(TRAMA);
+        descifrarTrama();
         tiempo++;
       }
 
@@ -107,10 +164,11 @@ void getNMEA2 (void){
     if (c=='\r'){
       NMEA[i]=c;
 
-      if (strncmp(NMEA,"$GPRMC",6)==0){
+      if (strncmp(NMEA,"$GPGGA",6)==0){
         memset(TRAMA,0,100);
         strcpy(TRAMA, NMEA);
         Serial.println(TRAMA);
+        descifrarTrama();
         tiempo++;
       }
 
@@ -126,7 +184,17 @@ void getNMEA2 (void){
 }
 
 void descifrarTrama(void){
-  //sscanf();
-  //imprimir el mensaje que se va a guardar en la sd
 
+  sscanf(TRAMA,"$GPGGA,%f,%f,%c,%f,%c,%i,%i,%f,%f,%c,",&hora,&lat,&ilat,&lon,&ilon,&fix,&sat,&HDOP,&alt,&unit);
+  char respuesta[200];
+  memset(respuesta,0,200);
+  sprintf(respuesta,"%f,%f,%c,%f,%c,%i,%i,%f,%f,%c\n",hora,lat,ilat,lon,ilon,fix,sat,HDOP,alt,unit);
+  //Serial.print(respuesta);
+  writeFileSD(respuesta);
+}
+
+void writeFileSD(char *mens){
+  myFile = SD.open("log.txt", FILE_WRITE);
+  myFile.write(mens);
+  myFile.close();
 }
