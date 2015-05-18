@@ -126,7 +126,7 @@ void getNMEA2 (void){
 }
 
 void descifrarTrama(void){
-  sscanf();
+  //sscanf();
   //imprimir el mensaje que se va a guardar en la sd
 
 }
