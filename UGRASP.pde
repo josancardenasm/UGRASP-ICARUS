@@ -42,8 +42,8 @@ char mensaje[200];
 
 /***********PROTOTIPOS***********/
 
-void getNMEA1(void);
-void getNMEA2(void);
+void getNMEA1(void);              //Modo Bloqueante
+void getNMEA2(void);              //Modo No bloqueante
 void descifrarTrama(void);
 void writeFileSD(char *);
 
