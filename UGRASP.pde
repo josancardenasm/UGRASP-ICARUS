@@ -13,6 +13,13 @@
 #define LEDA 6
 #define LEDR 9
 
+#define BUT1 47
+#define BUT2 76
+#define BUT3 77
+
+#define PWRKEY 86  //pin de apagado y ncendido del GSM
+
+
 /**********VARIABLES*************/
 
 //GPS
@@ -46,6 +53,9 @@ void getNMEA1(void);              //Modo Bloqueante
 void getNMEA2(void);              //Modo No bloqueante
 void descifrarTrama(void);
 void writeFileSD(char *);
+void enviarMensaje (char *);
+void check(void);
+
 
 /***********APLICACION************/
 
@@ -54,11 +64,12 @@ void setup() {
   delay(5000);
 
   //GPS
-  Serial.begin(38400);
+  Serial.begin(9600);
+  Serial2.begin(9600);
   Serial3.begin(38400);
 
 
-  Serial.println("Aqui empiezo");
+  Serial2.println("Aqui empiezo");
 
   //LEDS
   pinMode(LEDV, OUTPUT);
@@ -67,6 +78,12 @@ void setup() {
   digitalWrite(LEDV,LOW);
   digitalWrite(LEDA,LOW);
   digitalWrite(LEDR,LOW);
+
+  //GSM
+
+  pinMode(PWRKEY,OUTPUT);
+  pinMode(BUT1,INPUT);
+  digitalWrite(PWRKEY,HIGH);
 
   //SD (Para ayuda mirar ejemplo Files)
   pinMode(chipSelect_SD_default, OUTPUT);
