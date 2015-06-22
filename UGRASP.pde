@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <SD.h>
+#include <math.h>
 
 /***********DEFINES**************/
 
@@ -40,12 +41,18 @@ float HDOP;         //No se que es
 float alt;          //Altitud
 char unit;          //Unidad de altitud
 
+//GSM
+
+int enviarSMSFlag=0;
+
+
 //SD
 File myFile;              //Manejador para la SD
 const int chipSelect_SD_default = 53;
 const int chipSelect_SD = chipSelect_SD_default;
 int fileExist=0;
 char mensaje[200];
+char ggleMapsMesg[200];
 
 /***********PROTOTIPOS***********/
 
@@ -83,6 +90,8 @@ void setup() {
 
   pinMode(PWRKEY,OUTPUT);
   pinMode(BUT1,INPUT);
+  pinMode(BUT2,INPUT);
+  pinMode(BUT3,INPUT);
   digitalWrite(PWRKEY,HIGH);
 
   //SD (Para ayuda mirar ejemplo Files)
@@ -90,32 +99,58 @@ void setup() {
   digitalWrite(chipSelect_SD_default, HIGH);
   pinMode(chipSelect_SD, OUTPUT);
   digitalWrite(chipSelect_SD, HIGH);
+
+  //CHequeo de la SD
   if (!SD.begin(chipSelect_SD)) {
-    Serial.println("initialization failed!");
+    Serial2.println("initialization failed!");
     digitalWrite(LEDR,HIGH);
   }
   if (SD.exists("log.txt")) {
-    Serial.println("example.txt exists.");
+    Serial2.println("example.txt exists.");
   }
 
 }
 
 void loop() {
 
-  // if (Serial3.available()>0){
-  //   Serial.write(Serial3.read());
-  // }
-
+  //Desciframos trama
   getNMEA2();
 
-  if (tiempo==10){
+  //Enviamos mensaje de texto con coordenadas
+  if (tiempo==60){
+    Serial2.println("enviarr SMS");
 
-    Serial.println("Han pasado 10 segundos");
-    // memset(mensaje,0,200);
-    // sprintf(mensaje,"QUE PASA MONSTRO\n");
-    // writeFileSD(mensaje);
+    if(enviarSMSFlag==1){
+      enviarMensaje(ggleMapsMesg);
+    }
     tiempo=0;
   }
+
+  //chequeamos el buffer del GSM
+  check();
+
+  //Encendido del modulo GSM
+  if(digitalRead(BUT1)==LOW){
+    digitalWrite(LEDA,HIGH);
+    digitalWrite(PWRKEY,LOW);
+  }else{
+    digitalWrite(LEDA,LOW);
+    digitalWrite(PWRKEY,HIGH);
+  }
+
+  //Activación del envío de sms
+  if(digitalRead(BUT2)==0){
+    if(enviarSMSFlag==0){
+      enviarSMSFlag=1;
+      digitalWrite(LEDV,HIGH);
+      delay(1000);
+    }else{
+      enviarSMSFlag=0;
+      digitalWrite(LEDV,LOW);
+      delay(1000);
+    }
+  }
+
 }
 
 
@@ -150,7 +185,7 @@ void getNMEA1 (void){
       if (strncmp(NMEA,"$GPGGA",6)==0){
         memset(TRAMA,0,100);
         strcpy(TRAMA, NMEA);
-        Serial.println(TRAMA);
+        //Serial2.println(TRAMA);
         descifrarTrama();
         tiempo++;
       }
@@ -184,7 +219,7 @@ void getNMEA2 (void){
       if (strncmp(NMEA,"$GPGGA",6)==0){
         memset(TRAMA,0,100);
         strcpy(TRAMA, NMEA);
-        Serial.println(TRAMA);
+        //Serial2.println(TRAMA);
         descifrarTrama();
         tiempo++;
       }
@@ -206,12 +241,58 @@ void descifrarTrama(void){
   char respuesta[200];
   memset(respuesta,0,200);
   sprintf(respuesta,"%f,%f,%c,%f,%c,%i,%i,%f,%f,%c\n",hora,lat,ilat,lon,ilon,fix,sat,HDOP,alt,unit);
-  //Serial.print(respuesta);
+  //Serial.print(respuesta);  //Debug de lo que se escribe en la sd
   writeFileSD(respuesta);
+
+  //Mensaje para localizar el dispositivo
+  double latitud, longitud, latpartint, lonpartint, latpartdec, lonpartdec;
+  latitud = (double) lat;        //Latitud formato google
+  latitud=latitud/100;
+  latpartdec=modf(latitud,&latpartint);
+  latpartdec=latpartdec*100/60;
+  latitud=latpartint+latpartdec;
+
+  longitud = (double) lon;        //Longitud formato google
+  longitud=longitud/100;
+  lonpartdec=modf(longitud,&lonpartint);
+  lonpartdec=lonpartdec*100/60;
+  longitud=lonpartint+lonpartdec;
+  memset(ggleMapsMesg,0,200);
+  sprintf(ggleMapsMesg,"http://maps.google.com/maps?q=%.6f%c,%.6f%c\n\r",latitud,ilat,longitud,ilon);
+  //writeFileSD(ggleMapsMesg); //Debug
+
 }
 
 void writeFileSD(char *mens){
   myFile = SD.open("log.txt", FILE_WRITE);
   myFile.write(mens);
   myFile.close();
+}
+
+void check (void){
+
+    while (Serial.available()>0){
+      Serial2.write(Serial.read());
+    }
+
+    while (Serial2.available()>0){
+      Serial.write(Serial2.read());
+    }
+
+}
+
+void enviarMensaje(char *mensaje){
+
+  Serial.println("AT+CMGF=1");
+  check();
+  delay(1000);
+  Serial.println("AT+CMGS=\"689585469\"");
+  check();
+  delay(1000);
+  Serial.println(mensaje);
+  check();
+  delay(1000);
+  Serial.write(0x1A);
+  check();
+  delay(1000);
 }
