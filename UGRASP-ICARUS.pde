@@ -17,6 +17,7 @@
 #define BUT1 47
 #define BUT2 76
 #define BUT3 77
+#define STATUS A6
 
 #define PWRKEY 86  //pin de apagado y ncendido del GSM
 
@@ -68,7 +69,16 @@ void check(void);
 
 void setup() {
 
-  delay(5000);
+  pinMode(STATUS,INPUT);
+  pinMode(PWRKEY,OUTPUT);
+  digitalWrite(PWRKEY,LOW);
+  delay(2000);
+ digitalWrite(PWRKEY,HIGH);
+ delay(5000);
+ digitalWrite(PWRKEY,LOW);
+  delay(2000);
+ digitalWrite(PWRKEY,HIGH);
+ delay(5000);
 
   //GPS
   Serial.begin(9600);
@@ -88,11 +98,10 @@ void setup() {
 
   //GSM
 
-  pinMode(PWRKEY,OUTPUT);
+  
   pinMode(BUT1,INPUT);
   pinMode(BUT2,INPUT);
   pinMode(BUT3,INPUT);
-  digitalWrite(PWRKEY,HIGH);
 
   //SD (Para ayuda mirar ejemplo Files)
   pinMode(chipSelect_SD_default, OUTPUT);
@@ -108,6 +117,12 @@ void setup() {
   if (SD.exists("log.txt")) {
     Serial2.println("example.txt exists.");
   }
+  delay(5000);
+  digitalWrite(PWRKEY,LOW);
+  delay(2000);
+ digitalWrite(PWRKEY,HIGH);
+ delay(5000);
+  
 
 }
 
@@ -185,7 +200,7 @@ void getNMEA1 (void){
       if (strncmp(NMEA,"$GPGGA",6)==0){
         memset(TRAMA,0,100);
         strcpy(TRAMA, NMEA);
-        //Serial2.println(TRAMA);
+        Serial2.println(TRAMA);
         descifrarTrama();
         tiempo++;
       }
@@ -219,7 +234,7 @@ void getNMEA2 (void){
       if (strncmp(NMEA,"$GPGGA",6)==0){
         memset(TRAMA,0,100);
         strcpy(TRAMA, NMEA);
-        //Serial2.println(TRAMA);
+        Serial2.println(TRAMA);
         descifrarTrama();
         tiempo++;
       }
@@ -275,9 +290,9 @@ void check (void){
       Serial2.write(Serial.read());
     }
 
-    while (Serial2.available()>0){
-      Serial.write(Serial2.read());
-    }
+//    while (Serial2.available()>0){
+//      Serial.write(Serial2.read());
+//    }
 
 }
 
@@ -296,3 +311,4 @@ void enviarMensaje(char *mensaje){
   check();
   delay(1000);
 }
+
